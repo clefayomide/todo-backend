@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
 	addTodo,
-	createNewUserTable,
 	deleteTodo,
 	getAllTodo,
 	insertNewUser,
@@ -16,17 +15,13 @@ router.post("/new-user", function (req, res, next) {
 		return res.status(400).json({ message: "name field is required" });
 	}
 
-	createNewUserTable(name)
-		.then(() =>
-			insertNewUser(name)
-				.then((response) => {
-					const { message = "", userId = "" } = response;
-					res
-						.status(200)
-						.json({ message: message, data: { name: name, id: userId } });
-				})
-				.catch(() => res.status(500))
-		)
+	insertNewUser(name)
+		.then((response) => {
+			const { message = "", userId = "" } = response;
+			res
+				.status(200)
+				.json({ message: message, data: { name: name, id: userId } });
+		})
 		.catch(() => res.status(500));
 });
 

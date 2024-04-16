@@ -1,92 +1,81 @@
 import connection from "./connection.js";
 
-export const createNewUserTable = () => {
-	const sqlQuery = `CREATE TABLE IF NOT EXISTS user (userId varchar(50) not null, name varchar(60) not null, primary key (userId))`;
-	return new Promise((resolve, reject) => {
-		connection.query(sqlQuery, (err) => {
-			if (err) {
-				console.log(err);
-				return reject(err);
-			}
-			resolve("successful");
-		});
-	});
-};
+export const insertNewUser = (name) =>
+	new Promise((resolve, reject) => {
+		const userId = crypto.randomUUID().replaceAll("-", "");
+		connection
+			.insertOne({
+				userId,
+				name: name,
+			})
 
-export const insertNewUser = (name) => {
-	const userID = crypto.randomUUID().replaceAll("-", "");
-	const sqlQuery = "insert into user (userId, name) values (?, ?)";
-
-	return new Promise((resolve, reject) => {
-		connection.query(sqlQuery, [userID, name], (err) => {
-			if (err) {
-				console.log(err);
-				return reject(err);
-			}
-			resolve({ message: "successful", userId: userID });
-		});
+			.then(() => {
+				const responseData = { message: "User created successfully", userId };
+				resolve(responseData);
+			})
+			.catch((error) => {
+				console.log(error);
+				reject(error);
+			});
 	});
-};
 
 export const addTodo = (data) => {
 	const { completed = false, todo = "", userId = "" } = data ?? {};
 	const todoId = crypto.randomUUID().replaceAll("-", "");
 
-	const sqlQuery =
-		"insert into todo (todoId, userId, todo, completed) values (?, ?, ?, ?)";
-
 	return new Promise(async (resolve, reject) => {
-		connection.query(sqlQuery, [todoId, userId, todo, completed], (err) => {
-			if (err) {
-				console.log(err);
-				return reject(err);
-			}
-			resolve({ message: "successful", data: { todoId, todo, completed } });
-		});
+		connection
+			.updateOne(
+				{ userId: userId },
+				{ $push: { todos: { todo, completed, todoId } } }
+			)
+			.then(() =>
+				resolve({ message: "Successful", data: { todo, completed, todoId } })
+			)
+			.catch((error) => {
+				reject(error);
+			});
 	});
 };
 
 export const getAllTodo = (userId) => {
-	const sqlQuery = "select todoId, completed, todo from todo where userId = ?";
 	return new Promise((resolve, reject) => {
-		connection.query(sqlQuery, [userId], (err, results, fields) => {
-			if (err) {
-				console.log(err);
-				return reject(err);
-			}
-			resolve({ message: "successful", data: results });
-		});
+		connection
+			.findOne({ userId })
+			.then((result) => {
+				resolve({ message: "Successful", data: result.todos });
+			})
+			.catch((error) => {
+				reject(error);
+			});
 	});
 };
 
 export const updateTodo = (todoId = "", completed = false) => {
-	const sqlQuery = "update todo set completed = ? where todoId = ?";
 	return new Promise((resolve, reject) => {
-		connection.query(sqlQuery, [completed, todoId], (err, result) => {
-			if (err) {
-				console.log(err);
-				return reject(err);
-			}
-			if (result.affectedRows < 1) {
-				return reject(new Error("todo not found"));
-			}
-			resolve({ message: "successful" });
-		});
+		connection
+			.updateOne(
+				{ "todos.todoId": todoId },
+				{ $set: { "todos.$.completed": completed } }
+			)
+			.then(() => {
+				resolve({ message: "Successful" });
+			})
+			.catch((error) => {
+				reject(error);
+			});
 	});
 };
 
 export const deleteTodo = (todoId) => {
-	const sqlQuery = "delete from todo where todoId = ?;";
 	return new Promise((resolve, reject) => {
-		connection.query(sqlQuery, [todoId], (err, result) => {
-			if (err) {
-				console.log(err);
-				return reject(err);
-			}
-			if (result.affectedRows < 1) {
-				return reject(new Error("todo not found"));
-			}
-			resolve({ message: "successful" });
-		});
+		connection
+			.updateOne({}, { $pull: { todos: { todoId: todoId } } })
+			.then(() => {
+				resolve({ message: "Successful" });
+			})
+			.catch((error) => {
+				reject(error);
+			});
 	});
 };
